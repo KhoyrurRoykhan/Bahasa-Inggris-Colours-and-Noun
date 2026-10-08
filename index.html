@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colors & Nouns Smartboard Playground</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Fredoka', cursive, sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .btn-bounce {
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .btn-bounce:active {
+            transform: scale(0.93) translateY(4px) !important;
+            box-shadow: none !important;
+        }
+
+        @keyframes floatEffect {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(3deg); }
+        }
+
+        .animate-float {
+            animation: floatEffect 3s infinite ease-in-out;
+        }
+
+        .custom-glass {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border: 4 border-white;
+        }
+
+        /* Canvas Overlay for Whiteboard Scribble */
+        #scribble-canvas {
+            pointer-events: none;
+        }
+        #scribble-canvas.active {
+            pointer-events: auto;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 min-h-screen text-slate-800 flex flex-col justify-between overflow-x-hidden relative">
+
+    <canvas id="scribble-canvas" class="fixed inset-0 w-full h-full z-40 transition-opacity duration-200 opacity-0 pointer-events-none"></canvas>
+
+    <header class="bg-white/10 backdrop-blur-md border-b-2 border-white/20 px-6 py-3 text-white flex justify-between items-center shadow-lg relative z-30">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="resetGame()">
+            <div class="w-12 h-12 bg-yellow-400 rounded-2xl flex items-center justify-center text-2xl text-slate-900 shadow-md animate-bounce">
+                🎨
+            </div>
+            <div>
+                <h1 class="text-2xl md:text-3xl font-extrabold tracking-wide drop-shadow-md">Color & Noun Playground</h1>
+                <p class="text-xs text-yellow-200 hidden sm:block">Kuis Interaktif Papan Smartboard</p>
+            </div>
+        </div>
+
+        <!-- Action Toolbar -->
+        <div class="flex items-center space-x-2 md:space-x-3">
+            <!-- Whiteboard Drawing Pen Tool Toggle -->
+            <button onclick="toggleScribbleMode()" id="pen-btn" class="bg-white/20 hover:bg-white/30 text-white font-bold px-3 py-2.5 rounded-2xl border-2 border-white/40 shadow-md transition flex items-center gap-2">
+                <i class="fa-solid fa-pen-ruler text-xl"></i>
+                <span class="hidden md:inline text-sm">Coretan Papan</span>
+            </button>
+
+            <!-- Interactive BGM Toggle -->
+            <button onclick="toggleBGM()" id="bgm-btn" class="bg-white/20 hover:bg-white/30 text-white font-bold p-2.5 rounded-2xl border-2 border-white/40 shadow-md transition flex items-center justify-center w-11 h-11 relative" title="Musik Latar Interaktif">
+                <i class="fa-solid fa-music text-xl"></i>
+                <span id="bgm-indicator" class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+            </button>
+
+            <!-- Sound FX Toggle -->
+            <button onclick="toggleSound()" id="sound-btn" class="bg-white/20 hover:bg-white/30 text-white font-bold p-2.5 rounded-2xl border-2 border-white/40 shadow-md transition flex items-center justify-center w-11 h-11">
+                <i class="fa-solid fa-volume-high text-xl"></i>
+            </button>
+
+            <!-- Reset / Home -->
+            <button onclick="resetGame()" class="bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold px-4 py-2.5 rounded-2xl shadow-lg border-b-4 border-yellow-600 text-base flex items-center gap-2 btn-bounce">
+                <i class="fa-solid fa-house"></i>
+                <span class="hidden sm:inline">Menu Utama</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-4 flex-grow flex flex-col justify-center items-center relative z-20">
+
+        <div id="welcome-screen" class="custom-glass rounded-3xl p-8 max-w-3xl w-full text-center shadow-2xl border-4 border-white my-auto animate-float">
+            <div class="flex justify-center space-x-4 text-6xl mb-4">
+                <span>🍎</span>
+                <span>🎨</span>
+                <span>🐶</span>
+                <span>🍌</span>
+                <span>🐸</span>
+            </div>
+            <h2 class="text-3xl md:text-5xl font-extrabold text-indigo-700 mb-3 tracking-tight">
+                Mari Belajar Warna & Kata Benda!
+            </h2>
+            <p class="text-slate-600 text-lg md:text-xl font-medium mb-8 max-w-xl mx-auto">
+                Pilih mode permainan interaktif di bawah ini untuk memulai keseruan di papan interaktif!
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Class / Single Mode -->
+                <button onclick="startGame('classic')" class="bg-gradient-to-br from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white font-bold p-6 rounded-3xl shadow-xl border-b-8 border-teal-700 text-left flex flex-col justify-between space-y-4 btn-bounce group">
+                    <div class="flex justify-between items-center w-full">
+                        <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-3xl">
+                            🏫
+                        </div>
+                        <span class="bg-white/30 text-xs px-3 py-1 rounded-full uppercase tracking-wider font-semibold">Mode Bersama / Kelas</span>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-extrabold">Kuis Kelas Utama</h3>
+                        <p class="text-emerald-100 text-sm font-normal mt-1">Jawab pertanyaan bersama seluruh kelas dengan timer & suara pengucapan!</p>
+                    </div>
+                </button>
+
+                <!-- Split-Screen Battle Mode -->
+                <button onclick="startGame('battle')" class="bg-gradient-to-br from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white font-bold p-6 rounded-3xl shadow-xl border-b-8 border-rose-800 text-left flex flex-col justify-between space-y-4 btn-bounce group">
+                    <div class="flex justify-between items-center w-full">
+                        <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-3xl">
+                            ⚔️
+                        </div>
+                        <span class="bg-white/30 text-xs px-3 py-1 rounded-full uppercase tracking-wider font-semibold">Mode Adu Tim di Papan</span>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-extrabold">Adu Tim Merah vs Biru</h3>
+                        <p class="text-rose-100 text-sm font-normal mt-1">Layar terbagi dua! 2 siswa berlomba menekan jawaban benar di papan secara bersamaan!</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <div id="classic-screen" class="hidden w-full max-w-4xl custom-glass rounded-3xl p-6 md:p-8 shadow-2xl border-4 border-white flex flex-col my-auto">
+            <!-- Header Status Bar -->
+            <div class="flex justify-between items-center mb-6 bg-indigo-50/90 p-4 rounded-2xl border-2 border-indigo-100">
+                <div class="flex items-center gap-2">
+                    <span class="bg-indigo-600 text-white text-xs font-bold px-3 py-1.5 rounded-full uppercase">SOAL</span>
+                    <span class="text-xl font-extrabold text-indigo-900"><span id="current-question-num">1</span>/<span id="total-questions-num">10</span></span>
+                </div>
+                
+                <div class="flex items-center space-x-2 bg-amber-100 px-4 py-1.5 rounded-full border border-amber-300">
+                    <i class="fa-solid fa-star text-amber-500 text-xl"></i>
+                    <span id="score-display" class="text-xl font-extrabold text-amber-800">0</span>
+                </div>
+
+                <div class="flex items-center space-x-2 bg-rose-100 px-4 py-1.5 rounded-full border border-rose-300">
+                    <i class="fa-solid fa-clock text-rose-500 text-xl"></i>
+                    <span id="timer-display" class="text-xl font-extrabold text-rose-800">15</span>s
+                </div>
+            </div>
+
+            <!-- Question Card -->
+            <div class="text-center mb-6 py-2">
+                <div class="flex justify-center items-center gap-3 mb-2">
+                    <div id="question-visual" class="text-8xl md:text-9xl h-32 flex items-center justify-center filter drop-shadow-md">
+                        🍎
+                    </div>
+                    <!-- Audio TTS Read Aloud Button -->
+                    <button onclick="speakQuestion()" class="bg-indigo-500 hover:bg-indigo-600 text-white p-4 rounded-2xl shadow-md btn-bounce flex items-center justify-center" title="Dengarkan pengucapan">
+                        <i class="fa-solid fa-volume-high text-2xl"></i>
+                    </button>
+                </div>
+                <h3 id="question-text" class="text-2xl md:text-4xl font-extrabold text-slate-800 tracking-wide mt-2">
+                    What color is this apple?
+                </h3>
+            </div>
+
+            <!-- Options Grid -->
+            <div id="options-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Answer Buttons dynamically inserted via JS -->
+            </div>
+
+            <!-- Feedback Msg -->
+            <div id="feedback-msg" class="mt-4 text-center text-2xl md:text-3xl font-extrabold h-12 flex items-center justify-center"></div>
+        </div>
+
+        <div id="battle-screen" class="hidden w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-6 my-auto">
+            <!-- Team Red Zone -->
+            <div class="bg-gradient-to-b from-rose-500 to-red-600 text-white rounded-3xl p-6 shadow-2xl border-4 border-white flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-4 bg-white/20 p-3 rounded-2xl backdrop-blur-sm border border-white/30">
+                        <div class="flex items-center gap-2">
+                            <span class="text-3xl">🔴</span>
+                            <h3 class="text-2xl font-black uppercase tracking-wider">Tim Merah</h3>
+                        </div>
+                        <div class="bg-white text-rose-600 font-black text-2xl px-4 py-1 rounded-xl shadow">
+                            <span id="red-score">0</span> Poin
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-center items-center gap-2">
+                        <div id="red-visual" class="text-7xl text-center my-3 h-20 flex items-center justify-center drop-shadow-lg">🍎</div>
+                        <button onclick="speakText(document.getElementById('red-question').innerText)" class="bg-white/20 hover:bg-white/30 text-white p-3 rounded-xl border border-white/40">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                    </div>
+                    <p id="red-question" class="text-xl md:text-2xl font-extrabold text-center mb-6 min-h-[3rem] bg-black/10 p-3 rounded-xl flex items-center justify-center">
+                        Pertanyaan Tim Merah
+                    </p>
+                    <div id="red-options" class="grid grid-cols-2 gap-3">
+                        <!-- Dynamic Buttons for Red -->
+                    </div>
+                </div>
+                <div id="red-feedback" class="text-center font-black text-xl mt-3 h-8"></div>
+            </div>
+
+            <!-- Team Blue Zone -->
+            <div class="bg-gradient-to-b from-blue-500 to-indigo-600 text-white rounded-3xl p-6 shadow-2xl border-4 border-white flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-4 bg-white/20 p-3 rounded-2xl backdrop-blur-sm border border-white/30">
+                        <div class="flex items-center gap-2">
+                            <span class="text-3xl">🔵</span>
+                            <h3 class="text-2xl font-black uppercase tracking-wider">Tim Biru</h3>
+                        </div>
+                        <div class="bg-white text-blue-600 font-black text-2xl px-4 py-1 rounded-xl shadow">
+                            <span id="blue-score">0</span> Poin
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center items-center gap-2">
+                        <div id="blue-visual" class="text-7xl text-center my-3 h-20 flex items-center justify-center drop-shadow-lg">🫐</div>
+                        <button onclick="speakText(document.getElementById('blue-question').innerText)" class="bg-white/20 hover:bg-white/30 text-white p-3 rounded-xl border border-white/40">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                    </div>
+                    <p id="blue-question" class="text-xl md:text-2xl font-extrabold text-center mb-6 min-h-[3rem] bg-black/10 p-3 rounded-xl flex items-center justify-center">
+                        Pertanyaan Tim Biru
+                    </p>
+                    <div id="blue-options" class="grid grid-cols-2 gap-3">
+                        <!-- Dynamic Buttons for Blue -->
+                    </div>
+                </div>
+                <div id="blue-feedback" class="text-center font-black text-xl mt-3 h-8"></div>
+            </div>
+        </div>
+
+        <div id="result-screen" class="hidden custom-glass rounded-3xl p-8 max-w-2xl w-full text-center shadow-2xl border-4 border-white my-auto">
+            <div class="text-8xl mb-4 animate-bounce">🏆</div>
+            <h2 class="text-4xl md:text-5xl font-black text-indigo-700 mb-2">Hore! Kuis Selesai!</h2>
+            <p class="text-slate-600 text-xl font-medium mb-6">Hebat Sekali! Pembelajaran Warna & Kata Benda Tuntas!</p>
+
+            <div id="final-score-container" class="bg-indigo-50/90 rounded-2xl p-6 mb-8 border-2 border-indigo-100 shadow-inner">
+                <!-- Score results injected by JS -->
+            </div>
+
+            <div class="flex justify-center gap-4">
+                <button onclick="resetGame()" class="bg-gradient-to-r from-emerald-400 to-teal-500 text-white font-extrabold px-8 py-4 rounded-2xl shadow-xl border-b-4 border-teal-700 text-xl btn-bounce flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> Main Lagi
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="scribble-toolbar" class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full border-2 border-white/30 shadow-2xl flex items-center gap-4 z-50 hidden">
+        <span class="text-xs uppercase font-bold text-yellow-400">Mode Papan:</span>
+        <button onclick="setPenColor('#ef4444')" class="w-8 h-8 rounded-full bg-red-500 border-2 border-white focus:scale-110 transition"></button>
+        <button onclick="setPenColor('#eab308')" class="w-8 h-8 rounded-full bg-yellow-500 border-2 border-white focus:scale-110 transition"></button>
+        <button onclick="setPenColor('#22c55e')" class="w-8 h-8 rounded-full bg-green-500 border-2 border-white focus:scale-110 transition"></button>
+        <button onclick="setPenColor('#3b82f6')" class="w-8 h-8 rounded-full bg-blue-500 border-2 border-white focus:scale-110 transition"></button>
+        <button onclick="clearScribble()" class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg border border-slate-500">
+            <i class="fa-solid fa-trash mr-1"></i> Hapus
+        </button>
+        <button onclick="toggleScribbleMode()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs px-3 py-1.5 rounded-lg font-bold">
+            Tutup Pen
+        </button>
+    </div>
+
+    <script>
+        const quizQuestions = [
+            {
+                visual: "🍎",
+                question: "What color is this apple?",
+                options: ["Red", "Blue", "Yellow", "Green"],
+                answer: "Red",
+                type: "color"
+            },
+            {
+                visual: "🍌",
+                question: "Which noun is yellow?",
+                options: ["Apple", "Banana", "Frog", "Car"],
+                answer: "Banana",
+                type: "noun"
+            },
+            {
+                visual: "🐸",
+                question: "What color is the frog?",
+                options: ["Purple", "Orange", "Green", "Pink"],
+                answer: "Green",
+                type: "color"
+            },
+            {
+                visual: "🚗",
+                question: "Complete the phrase: 'A blue ___'",
+                options: ["Sun", "Car", "Milk", "Banana"],
+                answer: "Car",
+                type: "phrase"
+            },
+            {
+                visual: "☀️",
+                question: "What color is the sun?",
+                options: ["Yellow", "Black", "Blue", "Red"],
+                answer: "Yellow",
+                type: "color"
+            },
+            {
+                visual: "🐘",
+                question: "What color is the elephant?",
+                options: ["Grey", "Orange", "Yellow", "Pink"],
+                answer: "Grey",
+                type: "color"
+            },
+            {
+                visual: "🥛",
+                question: "Which noun is white?",
+                options: ["Milk", "Grass", "Chocolate", "Tomato"],
+                answer: "Milk",
+                type: "noun"
+            },
+            {
+                visual: "🍇",
+                question: "What color are these grapes?",
+                options: ["Purple", "Yellow", "White", "Brown"],
+                answer: "Purple",
+                type: "color"
+            },
+            {
+                visual: "🦩",
+                question: "What color is the flamingo?",
+                options: ["Pink", "Green", "Blue", "Black"],
+                answer: "Pink",
+                type: "color"
+            },
+            {
+                visual: "🐱",
+                question: "Which noun is an animal?",
+                options: ["Cat", "Car", "Chair", "Cloud"],
+                answer: "Cat",
+                type: "noun"
+            },
+            {
+                visual: "🍊",
+                question: "What color is this orange?",
+                options: ["Orange", "Blue", "Purple", "Green"],
+                answer: "Orange",
+                type: "color"
+            },
+            {
+                visual: "🐷",
+                question: "Complete the phrase: 'A pink ___'",
+                options: ["Pig", "Frog", "Sun", "Grass"],
+                answer: "Pig",
+                type: "phrase"
+            }
+        ];
+
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        let bgmEnabled = false;
+        let bgmTimer = null;
+        let bgmStep = 0;
+        let bgmTempo = 210; // tempo milidetik per ketukan
+
+        // Peta frekuensi nada pentatonis ceria untuk anak-anak
+        const noteFreqs = {
+            'C3': 130.81, 'D3': 146.83, 'E3': 164.81, 'F3': 174.61, 'G3': 196.00, 'A3': 220.00,
+            'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88,
+            'C5': 523.25, 'D5': 587.33, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99, 'A5': 880.00,
+            'REST': 0
+        };
+
+        // Partitur nada melodi & bass synthesizer interaktif
+        const bgmScore = [
+            { melody: 'C4', bass: 'C3' },
+            { melody: 'E4', bass: 'REST' },
+            { melody: 'G4', bass: 'G3' },
+            { melody: 'C5', bass: 'REST' },
+            { melody: 'B4', bass: 'F3' },
+            { melody: 'G4', bass: 'REST' },
+            { melody: 'A4', bass: 'F3' },
+            { melody: 'F4', bass: 'REST' },
+            { melody: 'G4', bass: 'C3' },
+            { melody: 'E4', bass: 'REST' },
+            { melody: 'D4', bass: 'G3' },
+            { melody: 'F4', bass: 'REST' },
+            { melody: 'E4', bass: 'C3' },
+            { melody: 'C4', bass: 'REST' },
+            { melody: 'D4', bass: 'G3' },
+            { melody: 'G3', bass: 'REST' }
+        ];
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleBGM() {
+            initAudio();
+            bgmEnabled = !bgmEnabled;
+            const btn = document.getElementById('bgm-btn');
+            const indicator = document.getElementById('bgm-indicator');
+            
+            if (bgmEnabled) {
+                btn.classList.add('bg-yellow-400', 'text-slate-900', 'animate-pulse');
+                btn.classList.remove('bg-white/20', 'text-white');
+                indicator.classList.remove('bg-red-500');
+                indicator.classList.add('bg-emerald-400');
+                startBGM();
+                playSound('click');
+            } else {
+                btn.classList.remove('bg-yellow-400', 'text-slate-900', 'animate-pulse');
+                btn.classList.add('bg-white/20', 'text-white');
+                indicator.classList.remove('bg-emerald-400');
+                indicator.classList.add('bg-red-500');
+                stopBGM();
+            }
+        }
+
+        function startBGM() {
+            stopBGM();
+            bgmStep = 0;
+            bgmTimer = setInterval(playBgmStep, bgmTempo);
+        }
+
+        function stopBGM() {
+            if (bgmTimer) {
+                clearInterval(bgmTimer);
+                bgmTimer = null;
+            }
+        }
+
+        function playBgmStep() {
+            if (!bgmEnabled || !soundEnabled || !audioCtx) return;
+
+            const stepData = bgmScore[bgmStep % bgmScore.length];
+            bgmStep++;
+
+            const now = audioCtx.currentTime;
+
+            // Generator Nada Melodi
+            if (stepData.melody !== 'REST' && noteFreqs[stepData.melody]) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(noteFreqs[stepData.melody], now);
+                
+                // Volume lembut agar tidak mengganggu fokus anak
+                gain.gain.setValueAtTime(0.035, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + (bgmTempo / 1000) * 0.9);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + (bgmTempo / 1000) * 0.9);
+            }
+
+            // Generator Nada Bass
+            if (stepData.bass !== 'REST' && noteFreqs[stepData.bass]) {
+                const bassOsc = audioCtx.createOscillator();
+                const bassGain = audioCtx.createGain();
+
+                bassOsc.type = 'sine';
+                bassOsc.frequency.setValueAtTime(noteFreqs[stepData.bass], now);
+
+                bassGain.gain.setValueAtTime(0.04, now);
+                bassGain.gain.exponentialRampToValueAtTime(0.001, now + (bgmTempo / 1000) * 1.4);
+
+                bassOsc.connect(bassGain);
+                bassGain.connect(audioCtx.destination);
+
+                bassOsc.start(now);
+                bassOsc.stop(now + (bgmTempo / 1000) * 1.4);
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(450, now);
+                osc.frequency.exponentialRampToValueAtTime(850, now + 0.05);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.setValueAtTime(160, now + 0.15);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('sound-btn');
+            btn.innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high text-xl"></i>' : '<i class="fa-solid fa-volume-xmark text-xl"></i>';
+        }
+
+        // Speech Synthesis for English pronunciation
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function speakQuestion() {
+            const q = quizQuestions[currentQuestionIndex];
+            speakText(q.question);
+        }
+
+        let currentGameMode = 'classic';
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timer = null;
+        let timeLeft = 15;
+
+        let redScore = 0;
+        let blueScore = 0;
+        let redIndex = 0;
+        let blueIndex = 1;
+
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const classicScreen = document.getElementById('classic-screen');
+        const battleScreen = document.getElementById('battle-screen');
+        const resultScreen = document.getElementById('result-screen');
+
+        function startGame(mode) {
+            playSound('click');
+            initAudio();
+            currentGameMode = mode;
+            welcomeScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+
+            if (mode === 'classic') {
+                classicScreen.classList.remove('hidden');
+                battleScreen.classList.add('hidden');
+                currentQuestionIndex = 0;
+                score = 0;
+                document.getElementById('score-display').innerText = score;
+                document.getElementById('total-questions-num').innerText = quizQuestions.length;
+                loadClassicQuestion();
+            } else if (mode === 'battle') {
+                battleScreen.classList.remove('hidden');
+                classicScreen.classList.add('hidden');
+                redScore = 0;
+                blueScore = 0;
+                redIndex = 0;
+                blueIndex = 1;
+                document.getElementById('red-score').innerText = redScore;
+                document.getElementById('blue-score').innerText = blueScore;
+                loadBattleQuestion('red');
+                loadBattleQuestion('blue');
+            }
+        }
+
+        function loadClassicQuestion() {
+            clearInterval(timer);
+            timeLeft = 15;
+            document.getElementById('timer-display').innerText = timeLeft;
+            document.getElementById('feedback-msg').innerHTML = '';
+
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer-display').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    handleAnswer(null, false);
+                }
+            }, 1000);
+
+            const q = quizQuestions[currentQuestionIndex];
+            document.getElementById('current-question-num').innerText = currentQuestionIndex + 1;
+            document.getElementById('question-visual').innerText = q.visual;
+            document.getElementById('question-text').innerText = q.question;
+
+            // Automatically read question aloud for kids
+            setTimeout(() => {
+                speakQuestion();
+            }, 300);
+
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+
+            const themeColors = [
+                'bg-rose-500 hover:bg-rose-600 border-rose-700',
+                'bg-blue-500 hover:bg-blue-600 border-blue-700',
+                'bg-amber-500 hover:bg-amber-600 border-amber-700',
+                'bg-emerald-500 hover:bg-emerald-600 border-emerald-700'
+            ];
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `${themeColors[idx % themeColors.length]} text-white text-2xl md:text-3xl font-extrabold py-5 px-4 rounded-2xl shadow-lg border-b-4 btn-bounce flex justify-center items-center h-20 tracking-wide`;
+                btn.innerText = opt;
+                btn.onclick = () => {
+                    playSound('click');
+                    handleAnswer(opt, opt === q.answer);
+                };
+                grid.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(selected, isCorrect) {
+            clearInterval(timer);
+            const feedback = document.getElementById('feedback-msg');
+
+            const buttons = document.querySelectorAll('#options-grid button');
+            buttons.forEach(b => b.disabled = true);
+
+            if (isCorrect) {
+                playSound('correct');
+                score += 10;
+                document.getElementById('score-display').innerText = score;
+                feedback.className = "mt-4 text-center text-3xl font-black h-12 text-emerald-600 animate-bounce";
+                feedback.innerHTML = "🎉 Benar Sekali! (+10)";
+                
+                try {
+                    confetti({
+                        particleCount: 60,
+                        spread: 70,
+                        origin: { y: 0.6 }
+                    });
+                } catch(e){}
+            } else {
+                playSound('wrong');
+                feedback.className = "mt-4 text-center text-3xl font-black h-12 text-rose-600";
+                feedback.innerText = selected === null ? "⏰ Waktu Habis!" : "❌ Belum Tepat, Ayo Coba Lagi!";
+            }
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < quizQuestions.length) {
+                    loadClassicQuestion();
+                } else {
+                    showResults();
+                }
+            }, 1500);
+        }
+
+        function loadBattleQuestion(team) {
+            const index = team === 'red' ? redIndex : blueIndex;
+            const q = quizQuestions[index % quizQuestions.length];
+
+            document.getElementById(`${team}-visual`).innerText = q.visual;
+            document.getElementById(`${team}-question`).innerText = q.question;
+
+            const container = document.getElementById(`${team}-options`);
+            container.innerHTML = '';
+
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "bg-white text-slate-800 font-extrabold py-4 px-3 rounded-2xl text-xl shadow-md hover:bg-slate-100 border-b-4 border-slate-300 btn-bounce flex items-center justify-center min-h-[60px]";
+                btn.innerText = opt;
+                btn.onclick = () => {
+                    playSound('click');
+                    handleBattleAnswer(team, opt === q.answer);
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function handleBattleAnswer(team, isCorrect) {
+            const feedbackEl = document.getElementById(`${team}-feedback`);
+            if (isCorrect) {
+                playSound('correct');
+                if (team === 'red') {
+                    redScore += 10;
+                    document.getElementById('red-score').innerText = redScore;
+                    redIndex = (redIndex + 2) % quizQuestions.length;
+                    feedbackEl.innerText = "✨ Benar! +10";
+                    setTimeout(() => {
+                        feedbackEl.innerText = "";
+                        loadBattleQuestion('red');
+                    }, 800);
+                } else {
+                    blueScore += 10;
+                    document.getElementById('blue-score').innerText = blueScore;
+                    blueIndex = (blueIndex + 2) % quizQuestions.length;
+                    feedbackEl.innerText = "✨ Benar! +10";
+                    setTimeout(() => {
+                        feedbackEl.innerText = "";
+                        loadBattleQuestion('blue');
+                    }, 800);
+                }
+
+                try {
+                    confetti({
+                        particleCount: 30,
+                        spread: 50,
+                        origin: { x: team === 'red' ? 0.25 : 0.75, y: 0.6 }
+                    });
+                } catch(e){}
+
+            } else {
+                playSound('wrong');
+                feedbackEl.innerText = "❌ Kurang Tepat!";
+                setTimeout(() => {
+                    feedbackEl.innerText = "";
+                }, 800);
+            }
+
+            if (redScore >= 60 || blueScore >= 60) {
+                showResults();
+            }
+        }
+
+        const canvas = document.getElementById('scribble-canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let scribbleActive = false;
+        let currentColor = '#ef4444';
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = 6;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function toggleScribbleMode() {
+            scribbleActive = !scribbleActive;
+            const btn = document.getElementById('pen-btn');
+            const toolbar = document.getElementById('scribble-toolbar');
+
+            if (scribbleActive) {
+                canvas.classList.add('active', 'opacity-100');
+                canvas.classList.remove('opacity-0');
+                btn.classList.add('bg-yellow-400', 'text-slate-900');
+                toolbar.classList.remove('hidden');
+            } else {
+                canvas.classList.remove('active', 'opacity-100');
+                canvas.classList.add('opacity-0');
+                btn.classList.remove('bg-yellow-400', 'text-slate-900');
+                toolbar.classList.add('hidden');
+            }
+        }
+
+        function setPenColor(color) {
+            currentColor = color;
+        }
+
+        function clearScribble() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function startDrawing(e) {
+            if (!scribbleActive) return;
+            isDrawing = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e) {
+            if (!isDrawing || !scribbleActive) return;
+            const pos = getPos(e);
+            ctx.strokeStyle = currentColor;
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function getPos(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        function showResults() {
+            classicScreen.classList.add('hidden');
+            battleScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+
+            const container = document.getElementById('final-score-container');
+
+            try {
+                confetti({
+                    particleCount: 120,
+                    spread: 90,
+                    origin: { y: 0.4 }
+                });
+            } catch(e){}
+
+            if (currentGameMode === 'classic') {
+                const maxScore = quizQuestions.length * 10;
+                const percentage = Math.round((score / maxScore) * 100);
+                container.innerHTML = `
+                    <p class="text-xl font-bold text-slate-600 uppercase tracking-wider">Skor Kuis Kelas</p>
+                    <p class="text-6xl font-black text-indigo-600 my-2">${score} <span class="text-3xl text-slate-400">/ ${maxScore}</span></p>
+                    <p class="text-lg font-extrabold text-emerald-600 mt-2">${percentage >= 70 ? '🌟 Luar Biasa! Penguasaan Warna & Kata Benda Sempurna!' : '👍 Bagus Sekali! Mari Terus Latihan Bersama!'}</p>
+                `;
+            } else {
+                let winnerTitle = "";
+                if (redScore > blueScore) {
+                    winnerTitle = "<span class='text-rose-600'>🔴 Tim Merah Menang!</span>";
+                } else if (blueScore > redScore) {
+                    winnerTitle = "<span class='text-blue-600'>🔵 Tim Biru Menang!</span>";
+                } else {
+                    winnerTitle = "<span class='text-purple-600'>🤝 Hasil Seri Pertandingan!</span>";
+                }
+
+                container.innerHTML = `
+                    <p class="text-3xl md:text-4xl font-black mb-4">${winnerTitle}</p>
+                    <div class="flex justify-around items-center text-2xl font-bold pt-2 border-t border-indigo-200">
+                        <span class="text-rose-600">Tim Merah: ${redScore} Poin</span>
+                        <span class="text-blue-600">Tim Biru: ${blueScore} Poin</span>
+                    </div>
+                `;
+            }
+        }
+
+        function resetGame() {
+            playSound('click');
+            clearInterval(timer);
+            clearScribble();
+            if (scribbleActive) toggleScribbleMode();
+
+            classicScreen.classList.add('hidden');
+            battleScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            welcomeScreen.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
